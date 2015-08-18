@@ -208,11 +208,27 @@ public class HBaseMemTable implements Table {
 
     @Override
     public boolean checkAndPut(byte[] row, byte[] family, byte[] qualifier, byte[] value, Put put) throws IOException {
+        NavigableMap<Long, byte[]> values = data.getByKeyAndFamilyAndQualifier(row, family, qualifier);
+        if (values.isEmpty()) return false;
+
+        if (Arrays.equals(values.lastEntry().getValue(), value)) {
+            put(put);
+            return true;
+        }
+
         return false;
     }
 
     @Override
     public boolean checkAndPut(byte[] row, byte[] family, byte[] qualifier, CompareFilter.CompareOp compareOp, byte[] value, Put put) throws IOException {
+        NavigableMap<Long, byte[]> values = data.getByKeyAndFamilyAndQualifier(row, family, qualifier);
+        if (values.isEmpty()) return false;
+
+        if (binaryComparator.byOperator(values.lastEntry().getValue(), value, compareOp)) {
+            put(put);
+            return true;
+        }
+
         return false;
     }
 

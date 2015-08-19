@@ -4,6 +4,7 @@ import com.google.protobuf.Descriptors;
 import com.google.protobuf.Message;
 import com.google.protobuf.Service;
 import com.google.protobuf.ServiceException;
+import org.apache.commons.lang.ArrayUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellUtil;
@@ -261,12 +262,44 @@ public class HBaseMemTable implements Table {
 
     @Override
     public void delete(Delete delete) throws IOException {
+        byte[] rowKey = delete.getRow();
+        if (data.getByKey(rowKey).isEmpty()) {
+            return;
+        }
 
+        NavigableMap<byte[], List<Cell>> familyCellMap = delete.getFamilyCellMap();
+        if (familyCellMap.isEmpty()) {
+            data.deleteByKey(rowKey);
+            return;
+        }
+
+        for (byte[] family : familyCellMap.keySet()) {
+            if (data.getByKeyAndFamily(rowKey, family).isEmpty()) {
+                continue;
+            }
+
+            if (familyCellMap.get(family).isEmpty()) {
+                data.deleteByKeyAndFamily(rowKey, family, delete.getTimeStamp());
+                continue;
+            }
+
+            for (Cell cell : familyCellMap.get(family)) {
+                byte[] qualifier = CellUtil.cloneQualifier(cell);
+                if (ArrayUtils.isEmpty(qualifier)) {
+                    data.deleteByKeyAndFamily(rowKey, family, delete.getTimeStamp());
+                    break;
+                } else {
+                    data.deleteByKeyAndFamilyAndQualifier(rowKey, family, qualifier, cell.getTimestamp());
+                }
+            }
+        }
     }
 
     @Override
     public void delete(List<Delete> deletes) throws IOException {
-
+        for (Delete delete : deletes) {
+            delete(delete);
+        }
     }
 
     @Override

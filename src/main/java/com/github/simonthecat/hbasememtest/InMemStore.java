@@ -1,6 +1,7 @@
 package com.github.simonthecat.hbasememtest;
 
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.NavigableMap;
 import java.util.TreeMap;
 
@@ -104,4 +105,34 @@ public class InMemStore {
 
         data.get(rowKey).get(family).get(qualifier).put(timestamp, value);
     }
+
+    public void deleteByKey(byte[] rowKey) {
+        data.remove(rowKey);
+    }
+
+    public void deleteByKeyAndFamily(byte[] rowKey, byte[] family, long maxTimestamp) {
+        for (byte[] qualifier : data.get(rowKey).get(family).keySet()) {
+            deleteByKeyAndFamilyAndQualifier(rowKey, family, qualifier, maxTimestamp);
+        }
+    }
+
+    public void deleteByKeyAndFamilyAndQualifier(byte[] rowKey, byte[] family, byte[] qualifier, long maxTimestamp) {
+        Iterator<Long> valueTsIterator = data.get(rowKey).get(family).get(qualifier).keySet().iterator();
+        while (valueTsIterator.hasNext()) {
+            if (valueTsIterator.next() <= maxTimestamp) valueTsIterator.remove();
+        }
+
+        if (data.get(rowKey).get(family).get(qualifier).isEmpty()) {
+            data.get(rowKey).get(family).remove(qualifier);
+        }
+
+        if (data.get(rowKey).get(family).isEmpty()) {
+            data.get(rowKey).remove(family);
+        }
+
+        if (data.get(rowKey).isEmpty()) {
+            data.remove(rowKey);
+        }
+    }
+
 }

@@ -8,8 +8,7 @@ public class InMemStore {
 
     // HBase data is a multidimensional map
     // rowkey -> family -> column -> timestamp -> value
-    private NavigableMap<byte[], NavigableMap<byte[], NavigableMap<byte[], NavigableMap<Long, byte[]>>>> data =
-            new TreeMap<byte[], NavigableMap<byte[], NavigableMap<byte[], NavigableMap<Long, byte[]>>>>(new BinaryComparator());
+    private NavigableMap<byte[], NavigableMap<byte[], NavigableMap<byte[], NavigableMap<Long, byte[]>>>> data = new TreeMap<>(new BinaryComparator());
 
     public InMemStore() {
     }
@@ -53,13 +52,13 @@ public class InMemStore {
 
 
     public NavigableMap<byte[], NavigableMap<byte[], NavigableMap<Long, byte[]>>> getByKeyBetweenTimestamps(byte[] rowKey, Long minTimestamp, Long maxTimestamp) {
-        NavigableMap<byte[], NavigableMap<byte[], NavigableMap<Long, byte[]>>> results = new TreeMap<byte[], NavigableMap<byte[], NavigableMap<Long, byte[]>>>();
+        NavigableMap<byte[], NavigableMap<byte[], NavigableMap<Long, byte[]>>> results = new TreeMap<>();
 
         for (byte[] family : getByKey(rowKey).keySet()) {
-            NavigableMap<byte[], NavigableMap<Long, byte[]>> qualifierTsValueMatching = new TreeMap<byte[], NavigableMap<Long, byte[]>>();
+            NavigableMap<byte[], NavigableMap<Long, byte[]>> qualifierTsValueMatching = new TreeMap<>();
 
             for (byte[] qualifier : getByKeyAndFamily(rowKey, family).keySet()) {
-                NavigableMap<Long, byte[]> tsValueMatching = new TreeMap<Long, byte[]>();
+                NavigableMap<Long, byte[]> tsValueMatching = new TreeMap<>();
 
                 for (Long ts : getByKeyAndFamilyAndQualifier(rowKey, family, qualifier).keySet()) {
                     if (ts > minTimestamp && ts < maxTimestamp) {
@@ -76,7 +75,7 @@ public class InMemStore {
     }
 
     public NavigableMap<Long, byte[]> getByKeyAndFamilyAndQualifierBetweenTimestamps(byte[] rowKey, byte[] family, byte[] qualifier, Long minTimestamp, Long maxTimestamp) {
-        NavigableMap<Long, byte[]> results = new TreeMap<Long, byte[]>();
+        NavigableMap<Long, byte[]> results = new TreeMap<>();
 
         NavigableMap<Long, byte[]> values = getByKeyAndFamilyAndQualifier(rowKey, family, qualifier);
         for (Long ts : values.keySet()) {

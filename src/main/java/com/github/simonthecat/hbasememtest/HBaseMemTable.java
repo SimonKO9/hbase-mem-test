@@ -30,6 +30,11 @@ public class HBaseMemTable implements Table {
         this.data = new InMemStore();
     }
 
+    public HBaseMemTable(TableName tableName, InMemStore data) {
+        this.tableName = tableName;
+        this.data = data;
+    }
+
     @Override
     public TableName getName() {
         return tableName;

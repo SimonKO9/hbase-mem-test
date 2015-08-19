@@ -4,9 +4,11 @@ import com.google.protobuf.Descriptors;
 import com.google.protobuf.Message;
 import com.google.protobuf.Service;
 import com.google.protobuf.ServiceException;
-import org.apache.commons.lang.ArrayUtils;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.*;
+import org.apache.hadoop.hbase.Cell;
+import org.apache.hadoop.hbase.CellUtil;
+import org.apache.hadoop.hbase.HTableDescriptor;
+import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.*;
 import org.apache.hadoop.hbase.client.coprocessor.Batch;
 import org.apache.hadoop.hbase.filter.CompareFilter;
@@ -16,7 +18,7 @@ import org.apache.hadoop.hbase.ipc.CoprocessorRpcChannel;
 import java.io.IOException;
 import java.util.*;
 
-import static org.apache.commons.lang.ArrayUtils.*;
+import static org.apache.commons.lang.ArrayUtils.isEmpty;
 
 public class HBaseMemTable implements Table {
 
@@ -71,28 +73,56 @@ public class HBaseMemTable implements Table {
         if (!exists(get)) return new Result();
 
         byte[] rowKey = get.getRow();
-        if (!get.hasFamilies()) {
-            return Result.create(converter.toCellList(rowKey, data.getByKey(rowKey)));
-        }
-
         List<Cell> cells = new ArrayList<Cell>();
 
-        for (byte[] family : get.familySet()) {
-            NavigableSet<byte[]> qualifiers = get.getFamilyMap().get(family);
-            if (qualifiers == null || qualifiers.isEmpty()) {
-                qualifiers = data.getByKeyAndFamily(rowKey, family).navigableKeySet();
-            }
+        if (!get.hasFamilies()) {
+            cells.addAll(converter.toCellList(rowKey, data.getByKey(rowKey), get.getMaxVersions()));
+        } else {
+            for (byte[] family : get.familySet()) {
+                NavigableSet<byte[]> qualifiers = get.getFamilyMap().get(family);
+                if (qualifiers == null || qualifiers.isEmpty()) {
+                    qualifiers = data.getByKeyAndFamily(rowKey, family).navigableKeySet();
+                }
 
-            for (byte[] qualifier : qualifiers) {
-                NavigableMap<Long, byte[]> timestampToValues = data.getByKeyAndFamilyAndQualifier(rowKey, family, qualifier);
-                Long maxTimestamp = timestampToValues.lastKey();
-                byte[] maxValue = timestampToValues.get(maxTimestamp);
+                for (byte[] qualifier : qualifiers) {
+                    NavigableMap<Long, byte[]> timestampToValues = data.getByKeyAndFamilyAndQualifier(rowKey, family, qualifier);
+                    Long maxTimestamp = timestampToValues.lastKey();
+                    byte[] maxValue = timestampToValues.get(maxTimestamp);
 
-                cells.add(converter.toCell(rowKey, family, qualifier, maxTimestamp, maxValue));
+                    cells.add(converter.toCell(rowKey, family, qualifier, maxTimestamp, maxValue));
+                }
             }
         }
 
-        return Result.create(cells);
+        List<Cell> filtered;
+        if (get.getFilter() != null) {
+            Filter filter = get.getFilter();
+            filtered = new ArrayList<>(cells.size());
+
+            filter.reset();
+
+            for (Cell cell : cells) {
+                if (filter.filterAllRemaining()) break;
+                if (filter.filterRowKey(cell.getValueArray(), cell.getRowOffset(), cell.getRowLength())) {
+                    continue;
+                }
+
+                Filter.ReturnCode filterResult = filter.filterKeyValue(cell);
+                if (filterResult == Filter.ReturnCode.INCLUDE) {
+                    filtered.add(cell);
+                } else if (filterResult == Filter.ReturnCode.NEXT_ROW) {
+                    break;
+                }
+            }
+
+            if (filter.hasFilterRow()) {
+                filter.filterRowCells(filtered);
+            }
+        } else {
+            filtered = cells;
+        }
+
+        return Result.create(filtered);
     }
 
     @Override
@@ -123,7 +153,7 @@ public class HBaseMemTable implements Table {
             // find matching cells (not filtered yet)
             List<Cell> cells;
             if (!scan.hasFamilies()) {
-                cells = converter.toCellList(rowKey, data.getByKeyBetweenTimestamps(rowKey, scan.getTimeRange().getMin(), scan.getTimeRange().getMax()));
+                cells = converter.toCellList(rowKey, data.getByKeyBetweenTimestamps(rowKey, scan.getTimeRange().getMin(), scan.getTimeRange().getMax()), scan.getMaxVersions());
             } else {
                 cells = new ArrayList<Cell>();
                 for (byte[] family : scan.getFamilyMap().keySet()) {

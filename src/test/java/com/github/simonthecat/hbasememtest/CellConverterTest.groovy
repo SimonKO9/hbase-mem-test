@@ -29,7 +29,7 @@ class CellConverterTest extends Specification {
         ])
 
         expect:
-        converter.toCellList("k1".bytes, data.get("k1".bytes)) == [
+        converter.toCellList("k1".bytes, data.get("k1".bytes), get.getMaxVersions()) == [
                 new KeyValue("k1".bytes, "f1".bytes, "q1".bytes, 1L, "a".bytes),
                 new KeyValue("k1".bytes, "f1".bytes, "q1".bytes, 2L, "b".bytes),
                 new KeyValue("k1".bytes, "f1".bytes, "q2".bytes, 1L, "c".bytes)

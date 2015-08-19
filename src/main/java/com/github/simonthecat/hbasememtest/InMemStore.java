@@ -1,10 +1,12 @@
 package com.github.simonthecat.hbasememtest;
 
-import org.apache.hadoop.hbase.util.Bytes;
-
-import java.util.*;
+import java.util.Collections;
+import java.util.NavigableMap;
+import java.util.TreeMap;
 
 public class InMemStore {
+
+    private static final BinaryComparator BINARY_COMPARATOR = new BinaryComparator();
 
     // HBase data is a multidimensional map
     // rowkey -> family -> column -> timestamp -> value
@@ -89,11 +91,11 @@ public class InMemStore {
 
     public void insert(byte[] rowKey, byte[] family, byte[] qualifier, long timestamp, byte[] value) {
         if (!data.containsKey(rowKey)) {
-            data.put(rowKey, new TreeMap<byte[], NavigableMap<byte[], NavigableMap<Long, byte[]>>>());
+            data.put(rowKey, new TreeMap<byte[], NavigableMap<byte[], NavigableMap<Long, byte[]>>>(BINARY_COMPARATOR));
         }
 
         if (!data.get(rowKey).containsKey(family)) {
-            data.get(rowKey).put(family, new TreeMap<byte[], NavigableMap<Long, byte[]>>());
+            data.get(rowKey).put(family, new TreeMap<byte[], NavigableMap<Long, byte[]>>(BINARY_COMPARATOR));
         }
 
         if (!data.get(rowKey).get(family).containsKey(qualifier)) {

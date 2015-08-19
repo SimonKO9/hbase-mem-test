@@ -1,5 +1,6 @@
 package com.github.simonthecat.hbasememtest;
 
+import com.google.common.collect.Lists;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.KeyValue;
 
@@ -12,12 +13,19 @@ public class CellConverter {
     public CellConverter() {
     }
 
-    public List<Cell> toCellList(byte[] rowKey, NavigableMap<byte[], NavigableMap<byte[], NavigableMap<Long, byte[]>>> valueMap) {
-        List<Cell> keyValues = new ArrayList<Cell>();
+    public List<Cell> toCellList(byte[] rowKey, NavigableMap<byte[], NavigableMap<byte[], NavigableMap<Long, byte[]>>> valueMap, int maxVersions) {
+        if (maxVersions <= 0) maxVersions = Integer.MAX_VALUE;
+
+        List<Cell> keyValues = new ArrayList<>();
 
         for (byte[] family : valueMap.keySet()) {
             for (byte[] qualifier : valueMap.get(family).keySet()) {
-                for (Long timestamp : valueMap.get(family).get(qualifier).keySet()) {
+                List<Long> timestampsReverse = Lists.reverse(new ArrayList<>(valueMap.get(family).get(qualifier).keySet()));
+                if (timestampsReverse.size() > maxVersions) {
+                    timestampsReverse = timestampsReverse.subList(0, maxVersions);
+                }
+
+                for (Long timestamp : timestampsReverse) {
                     byte[] value = valueMap.get(family).get(qualifier).get(timestamp);
                     keyValues.add(new KeyValue(rowKey, family, qualifier, timestamp, value));
                 }

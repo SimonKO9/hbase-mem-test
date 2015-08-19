@@ -243,15 +243,7 @@ public class HBaseMemTable implements Table {
 
     @Override
     public boolean checkAndPut(byte[] row, byte[] family, byte[] qualifier, byte[] value, Put put) throws IOException {
-        NavigableMap<Long, byte[]> values = data.getByKeyAndFamilyAndQualifier(row, family, qualifier);
-        if (values.isEmpty()) return false;
-
-        if (Arrays.equals(values.lastEntry().getValue(), value)) {
-            put(put);
-            return true;
-        }
-
-        return false;
+        return checkAndPut(row, family, qualifier, CompareFilter.CompareOp.EQUAL, value, put);
     }
 
     @Override

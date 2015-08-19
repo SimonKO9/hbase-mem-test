@@ -54,10 +54,10 @@ public class InMemStore {
 
 
     public NavigableMap<byte[], NavigableMap<byte[], NavigableMap<Long, byte[]>>> getByKeyBetweenTimestamps(byte[] rowKey, Long minTimestamp, Long maxTimestamp) {
-        NavigableMap<byte[], NavigableMap<byte[], NavigableMap<Long, byte[]>>> results = new TreeMap<>();
+        NavigableMap<byte[], NavigableMap<byte[], NavigableMap<Long, byte[]>>> results = new TreeMap<>(BINARY_COMPARATOR);
 
         for (byte[] family : getByKey(rowKey).keySet()) {
-            NavigableMap<byte[], NavigableMap<Long, byte[]>> qualifierTsValueMatching = new TreeMap<>();
+            NavigableMap<byte[], NavigableMap<Long, byte[]>> qualifierTsValueMatching = new TreeMap<>(BINARY_COMPARATOR);
 
             for (byte[] qualifier : getByKeyAndFamily(rowKey, family).keySet()) {
                 NavigableMap<Long, byte[]> tsValueMatching = new TreeMap<>();

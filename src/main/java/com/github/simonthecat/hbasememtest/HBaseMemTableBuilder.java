@@ -15,6 +15,10 @@ public class HBaseMemTableBuilder {
         return new HBaseMemTableBuilder(tableName);
     }
 
+    public static HBaseMemTableBuilder builder(String namespace, String table) {
+        return builder(TableName.valueOf(namespace, table));
+    }
+
     public HBaseMemTableBuilder put(byte[] rowKey, byte[] family, byte[] qualifier, long timestamp, byte[] value) {
         store.insert(rowKey, family, qualifier, timestamp, value);
         return this;

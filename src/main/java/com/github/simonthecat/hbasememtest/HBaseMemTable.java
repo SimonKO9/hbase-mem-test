@@ -304,22 +304,32 @@ public class HBaseMemTable implements Table {
 
     @Override
     public void batch(List<? extends Row> actions, Object[] results) throws IOException, InterruptedException {
-
+        int i = 0;
+        for (Row action : actions) {
+            if (action instanceof Put) put((Put) action);
+            else if (action instanceof Delete) delete((Delete) action);
+            else if (action instanceof Get) results[i] = get((Get) action);
+            else if (action instanceof Append) results[i] = append((Append) action);
+            else if (action instanceof Increment) results[i] = increment((Increment) action);
+            i++;
+        }
     }
 
     @Override
     public Object[] batch(List<? extends Row> actions) throws IOException, InterruptedException {
-        return new Object[0];
+        Object[] results = new Object[actions.size()];
+        batch(actions, results);
+        return results;
     }
 
     @Override
     public <R> void batchCallback(List<? extends Row> actions, Object[] results, Batch.Callback<R> callback) throws IOException, InterruptedException {
-
+        throw new UnsupportedOperationException("Not implemented");
     }
 
     @Override
     public <R> Object[] batchCallback(List<? extends Row> actions, Batch.Callback<R> callback) throws IOException, InterruptedException {
-        return new Object[0];
+        throw new UnsupportedOperationException("Not implemented");
     }
 
     @Override

@@ -249,10 +249,7 @@ public class HBaseMemTable implements Table {
 
     @Override
     public boolean checkAndPut(byte[] row, byte[] family, byte[] qualifier, CompareFilter.CompareOp compareOp, byte[] value, Put put) throws IOException {
-        NavigableMap<Long, byte[]> values = data.getByKeyAndFamilyAndQualifier(row, family, qualifier);
-        if (values.isEmpty()) return false;
-
-        if (binaryComparator.byOperator(values.lastEntry().getValue(), value, compareOp)) {
+        if (data.check(row, family, qualifier, compareOp, value)) {
             put(put);
             return true;
         }
@@ -334,12 +331,22 @@ public class HBaseMemTable implements Table {
 
     @Override
     public boolean checkAndDelete(byte[] row, byte[] family, byte[] qualifier, byte[] value, Delete delete) throws IOException {
-        return false;
+        if (data.check(row, family, qualifier, CompareFilter.CompareOp.EQUAL, value)) {
+            delete(delete);
+            return true;
+        } else {
+            return false;
+        }
     }
 
     @Override
     public boolean checkAndDelete(byte[] row, byte[] family, byte[] qualifier, CompareFilter.CompareOp compareOp, byte[] value, Delete delete) throws IOException {
-        return false;
+        if (data.check(row, family, qualifier, compareOp, value)) {
+            delete(delete);
+            return true;
+        } else {
+            return false;
+        }
     }
 
     @Override

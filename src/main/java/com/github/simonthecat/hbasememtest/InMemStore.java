@@ -1,9 +1,13 @@
 package com.github.simonthecat.hbasememtest;
 
+import org.apache.hadoop.hbase.filter.CompareFilter;
+
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.NavigableMap;
 import java.util.TreeMap;
+
+import static org.apache.commons.lang.ArrayUtils.isEmpty;
 
 public class InMemStore {
 
@@ -135,4 +139,14 @@ public class InMemStore {
         }
     }
 
+    public boolean check(byte[] row, byte[] family, byte[] qualifier, CompareFilter.CompareOp compareOp, byte[] value) {
+        if (isEmpty(value)) {
+            return !data.containsKey(row) || !data.get(row).containsKey(family) || !data.get(row).get(family).containsKey(qualifier);
+        } else {
+            return data.containsKey(row)
+                    && data.get(row).containsKey(family)
+                    && data.get(row).get(family).containsKey(qualifier)
+                    && BINARY_COMPARATOR.byOperator(getByKeyAndFamilyAndQualifier(row, family, qualifier).lastEntry().getValue(), value, compareOp);
+        }
+    }
 }

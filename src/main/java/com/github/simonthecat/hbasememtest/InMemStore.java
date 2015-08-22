@@ -33,7 +33,7 @@ public class InMemStore {
             return data.get(rowKey);
         }
 
-        return Collections.emptyNavigableMap();
+        return new TreeMap<>(BINARY_COMPARATOR);
     }
 
 
@@ -42,7 +42,7 @@ public class InMemStore {
             return getByKey(rowKey).get(family);
         }
 
-        return Collections.emptyNavigableMap();
+        return new TreeMap<>(BINARY_COMPARATOR);
     }
 
     public NavigableMap<Long, byte[]> getByKeyAndFamilyAndQualifier(byte[] rowKey, byte[] family, byte[] qualifier) {

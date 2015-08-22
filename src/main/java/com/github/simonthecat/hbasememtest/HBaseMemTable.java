@@ -6,15 +6,13 @@ import com.google.protobuf.Service;
 import com.google.protobuf.ServiceException;
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.Cell;
-import org.apache.hadoop.hbase.CellUtil;
-import org.apache.hadoop.hbase.HTableDescriptor;
-import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.*;
 import org.apache.hadoop.hbase.client.*;
 import org.apache.hadoop.hbase.client.coprocessor.Batch;
 import org.apache.hadoop.hbase.filter.CompareFilter;
 import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.ipc.CoprocessorRpcChannel;
+import org.apache.hadoop.hbase.util.Bytes;
 
 import java.io.IOException;
 import java.util.*;
@@ -361,17 +359,41 @@ public class HBaseMemTable implements Table {
 
     @Override
     public Result increment(Increment increment) throws IOException {
-        return null;
+        List<Cell> updatedCells = new ArrayList<>();
+
+        Map<byte[], NavigableMap<byte[], Long>> incrementMap = increment.getFamilyMapOfLongs();
+        for (byte[] family : incrementMap.keySet()) {
+            for (byte[] qualifier : incrementMap.get(family).keySet()) {
+                long incrementAmount = incrementMap.get(family).get(qualifier);
+                long newValue = incrementColumnValue(increment.getRow(), family, qualifier, incrementAmount);
+                updatedCells.add(new KeyValue(increment.getRow(), family, qualifier, Bytes.toBytes(newValue)));
+            }
+        }
+
+        return Result.create(updatedCells);
     }
 
     @Override
     public long incrementColumnValue(byte[] row, byte[] family, byte[] qualifier, long amount) throws IOException {
-        return 0;
+        NavigableMap<Long, byte[]> values = data.getByKeyAndFamilyAndQualifier(row, family, qualifier);
+        if (!values.isEmpty()) {
+            byte[] currentValue = values.lastEntry().getValue();
+            long longValue = Bytes.toLong(currentValue);
+
+            long newValue = longValue + amount;
+            Put put = new Put(row).addColumn(family, qualifier, Bytes.toBytes(newValue));
+            put(put);
+            return newValue;
+        } else {
+            Put put = new Put(row).addColumn(family, qualifier, Bytes.toBytes(amount));
+            put(put);
+            return amount;
+        }
     }
 
     @Override
     public long incrementColumnValue(byte[] row, byte[] family, byte[] qualifier, long amount, Durability durability) throws IOException {
-        return 0;
+        return incrementColumnValue(row, family, qualifier, amount);
     }
 
     @Override

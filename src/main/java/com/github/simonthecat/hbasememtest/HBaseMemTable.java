@@ -349,7 +349,10 @@ public class HBaseMemTable implements Table {
 
     @Override
     public void mutateRow(RowMutations rm) throws IOException {
-
+        for (Mutation mutation : rm.getMutations()) {
+            if (mutation instanceof Put) put((Put) mutation);
+            if (mutation instanceof Delete) delete((Delete) mutation);
+        }
     }
 
     @Override
@@ -437,7 +440,11 @@ public class HBaseMemTable implements Table {
     }
 
     @Override
-    public boolean checkAndMutate(byte[] row, byte[] family, byte[] qualifier, CompareFilter.CompareOp compareOp, byte[] value, RowMutations mutation) throws IOException {
+    public boolean checkAndMutate(byte[] row, byte[] family, byte[] qualifier, CompareFilter.CompareOp compareOp, byte[] value, RowMutations mutations) throws IOException {
+        if (data.check(row, family, qualifier, compareOp, value)) {
+            mutateRow(mutations);
+            return true;
+        }
         return false;
     }
 }
